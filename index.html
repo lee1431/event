@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>STANCE LIVE EVENT / BROADCAST MODE</title>
+  <style>
+    :root {
+      --bg: #090e0d;
+      --bg-deep: #050807;
+      --grid: rgba(120, 170, 152, 0.06);
+      --text: #edf5f1;
+      --muted: rgba(237, 245, 241, 0.56);
+      --line: rgba(120, 170, 152, 0.10);
+      --line-strong: rgba(120, 170, 152, 0.18);
+      --point: #6fc6ab;
+      --panel: rgba(16, 24, 22, 0.86);
+      --panel-strong: rgba(12, 18, 17, 0.94);
+      --live: #d85b5b;
+      --success: #79d7b8;
+      --warning: #e8d98b;
+      --danger: #ff7b7b;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+        radial-gradient(circle at 50% 45%, rgba(111, 198, 171, 0.07), transparent 34%),
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.015), transparent 55%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+      background-size: 28px 28px, 28px 28px, auto, auto, auto;
+    }
+
+    body {
+      position: relative;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 50% 50%, transparent 0 26%, rgba(255,255,255,0.02) 26.1% 26.3%, transparent 26.4%),
+        radial-gradient(circle at 50% 50%, transparent 0 34%, rgba(255,255,255,0.018) 34.1% 34.25%, transparent 34.35%),
+        radial-gradient(circle at 50% 50%, transparent 0 42%, rgba(255,255,255,0.014) 42.1% 42.2%, transparent 42.3%);
+      opacity: 0.7;
+    }
+
+    .noise,
+    .scanline {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .noise {
+      opacity: 0.045;
+      background-image:
+        radial-gradient(circle at 20% 20%, #fff 0.45px, transparent 0.45px),
+        radial-gradient(circle at 70% 60%, #fff 0.45px, transparent 0.45px),
+        radial-gradient(circle at 40% 80%, #fff 0.45px, transparent 0.45px);
+      background-size: 160px 160px, 210px 210px, 180px 180px;
+      mix-blend-mode: soft-light;
+    }
+
+    .scanline {
+      background: linear-gradient(to bottom, transparent 0%, rgba(111, 198, 171, 0.025) 50%, transparent 100%);
+      background-size: 100% 4px;
+      opacity: 0.20;
+      mix-blend-mode: screen;
+    }
+
+    .hud {
+      position: absolute;
+      z-index: 10;
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .hud--top-left { top: 26px; left: 28px; }
+    .hud--top-right {
+      top: 26px;
+      right: 28px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .hud--bottom-left { left: 28px; bottom: 24px; }
+    .hud--bottom-right { right: 28px; bottom: 24px; text-align: right; }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--live);
+      box-shadow: 0 0 0 0 rgba(216, 91, 91, 0.38), 0 0 12px rgba(216, 91, 91, 0.75);
+      animation: livePulse 1.5s infinite;
+    }
+
+    @keyframes livePulse {
+      0% { box-shadow: 0 0 0 0 rgba(216, 91, 91, 0.38), 0 0 12px rgba(216, 91, 91, 0.75); }
+      75% { box-shadow: 0 0 0 12px rgba(216, 91, 91, 0), 0 0 16px rgba(216, 91, 91, 0.2); }
+      100% { box-shadow: 0 0 0 0 rgba(216, 91, 91, 0), 0 0 12px rgba(216, 91, 91, 0.75); }
+    }
+
+    .stage {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .system {
+      position: relative;
+      width: min(70vw, 860px);
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      --ring1-speed: 26s;
+      --ring2-speed: 18s;
+      --orbit-speed: 22s;
+    }
+
+    .ring,
+    .orbit-layer {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .ring {
+      border: 1px solid var(--line);
+      box-shadow: inset 0 0 40px rgba(255,255,255,0.01);
+    }
+
+    .ring-1 { width: 100%; height: 100%; animation: spinA var(--ring1-speed) linear infinite; }
+    .ring-2 { width: 86%; height: 86%; border-style: dashed; opacity: 0.7; animation: spinB var(--ring2-speed) linear infinite; }
+    .ring-3 { width: 72%; height: 72%; opacity: 0.48; animation: breathe 4.2s ease-in-out infinite; }
+    .ring-4 { width: 58%; height: 58%; opacity: 0.24; border-color: var(--line-strong); }
+
+    @keyframes spinA { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes spinB { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 0.42; }
+      50% { transform: scale(1.018); opacity: 0.65; }
+    }
+
+    .orbit-layer {
+      inset: 0;
+      animation: spinOrbit var(--orbit-speed) linear infinite;
+    }
+
+    .orbit-layer.reverse { animation-direction: reverse; }
+    @keyframes spinOrbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .orbit-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--point);
+      box-shadow: 0 0 0 8px rgba(111, 198, 171, 0.08), 0 0 18px rgba(111, 198, 171, 0.38);
+      transform: translate(-50%, -50%);
+      transition: transform 0.35s ease, opacity 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    .orbit-dot.small {
+      width: 7px;
+      height: 7px;
+      opacity: 0.78;
+      box-shadow: 0 0 0 6px rgba(111, 198, 171, 0.06), 0 0 14px rgba(111, 198, 171, 0.22);
+    }
+
+    .system.mode-drawing .orbit-dot {
+      animation: nodePulse 0.85s ease-in-out infinite alternate;
+    }
+
+    .system.mode-drawing .orbit-dot:nth-child(2n) { animation-duration: 0.7s; }
+    .system.mode-drawing .orbit-dot:nth-child(3n) { animation-duration: 1.05s; }
+
+    @keyframes nodePulse {
+      from {
+        opacity: 0.55;
+        box-shadow: 0 0 0 8px rgba(111, 198, 171, 0.04), 0 0 10px rgba(111, 198, 171, 0.18);
+      }
+      to {
+        opacity: 1;
+        box-shadow: 0 0 0 12px rgba(111, 198, 171, 0.10), 0 0 28px rgba(111, 198, 171, 0.44);
+      }
+    }
+
+    .center-core {
+      position: relative;
+      z-index: 4;
+      width: min(36vw, 360px);
+      height: min(36vw, 360px);
+      min-width: 260px;
+      min-height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      text-align: center;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.06);
+      background:
+        radial-gradient(circle at 32% 28%, rgba(255,255,255,0.08), transparent 20%),
+        radial-gradient(circle at 50% 50%, rgba(111, 198, 171, 0.06), transparent 60%),
+        linear-gradient(180deg, rgba(21, 31, 28, 0.98), rgba(10, 16, 15, 0.98));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        inset 0 -24px 40px rgba(0,0,0,0.22),
+        0 30px 90px rgba(0,0,0,0.46),
+        0 0 40px rgba(111, 198, 171, 0.05);
+      backdrop-filter: blur(10px);
+      transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+    }
+
+    .center-core::before {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.035);
+      pointer-events: none;
+    }
+
+    .center-core::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, rgba(111, 198, 171, 0.08), transparent 62%);
+      pointer-events: none;
+    }
+
+    .center-core.is-clickable { cursor: pointer; }
+    .center-core.is-clickable:hover {
+      transform: scale(1.02);
+      border-color: rgba(111, 198, 171, 0.18);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        inset 0 -24px 40px rgba(0,0,0,0.22),
+        0 30px 90px rgba(0,0,0,0.46),
+        0 0 55px rgba(111, 198, 171, 0.12);
+    }
+
+    .center-core.mode-drawing {
+      animation: drawingPulse 1.4s ease-in-out infinite;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        inset 0 -24px 40px rgba(0,0,0,0.22),
+        0 30px 90px rgba(0,0,0,0.46),
+        0 0 70px rgba(111, 198, 171, 0.18);
+    }
+
+    .center-core.mode-winner {
+      border-color: rgba(121, 215, 184, 0.24);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        inset 0 -24px 40px rgba(0,0,0,0.22),
+        0 30px 90px rgba(0,0,0,0.46),
+        0 0 90px rgba(121, 215, 184, 0.16);
+    }
+
+    @keyframes drawingPulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,0.05),
+          inset 0 -24px 40px rgba(0,0,0,0.22),
+          0 30px 90px rgba(0,0,0,0.46),
+          0 0 70px rgba(111, 198, 171, 0.10);
+      }
+      50% {
+        transform: scale(1.02);
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,0.05),
+          inset 0 -24px 40px rgba(0,0,0,0.22),
+          0 30px 90px rgba(0,0,0,0.46),
+          0 0 100px rgba(111, 198, 171, 0.22);
+      }
+    }
+
+    .core-inner,
+    .core-screen {
+      position: absolute;
+      inset: 0;
+    }
+
+    .core-screen {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      opacity: 0;
+      transform: scale(0.96);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+      pointer-events: none;
+    }
+
+    .core-screen.is-active {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+
+    .core-kicker,
+    .count-label,
+    .modal-kicker,
+    .modal-label,
+    .winner-prize {
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .core-kicker,
+    .count-label,
+    .modal-kicker,
+    .modal-label {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .core-prize {
+      font-size: clamp(52px, 7vw, 84px);
+      font-weight: 800;
+      line-height: 0.95;
+      letter-spacing: -0.06em;
+      text-shadow: 0 0 18px rgba(111, 198, 171, 0.06);
+    }
+
+    .core-title {
+      font-size: clamp(20px, 2.3vw, 28px);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+    }
+
+    .core-time {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .drawing-text {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .drawing-dots span {
+      opacity: 0.2;
+      animation: dotBlink 1s infinite;
+    }
+
+    .drawing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .drawing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes dotBlink {
+      0%, 20% { opacity: 0.15; }
+      50% { opacity: 1; }
+      100% { opacity: 0.15; }
+    }
+
+    .scan-beam {
+      position: absolute;
+      top: 50%;
+      left: -20%;
+      width: 140%;
+      height: 2px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-50%) rotate(-12deg);
+      background: linear-gradient(90deg, transparent 0%, rgba(111, 198, 171, 0) 20%, rgba(111, 198, 171, 0.95) 50%, rgba(111, 198, 171, 0) 80%, transparent 100%);
+      box-shadow: 0 0 18px rgba(111, 198, 171, 0.6);
+    }
+
+    .center-core.mode-drawing .scan-beam {
+      animation: sweepBeam 1.6s linear infinite;
+    }
+
+    @keyframes sweepBeam {
+      0% { opacity: 0; transform: translate(-30%, -80px) rotate(-12deg); }
+      12% { opacity: 0.95; }
+      50% { opacity: 1; transform: translate(0%, 0) rotate(-12deg); }
+      88% { opacity: 0.9; }
+      100% { opacity: 0; transform: translate(30%, 80px) rotate(-12deg); }
+    }
+
+    .winner-email {
+      max-width: 88%;
+      min-height: 2.8em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1;
+      opacity: 0;
+      transform: scale(0.92);
+    }
+
+    .winner-email.show-winner {
+      animation: winnerBounce 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards, winnerGlow 1.8s ease-in-out 0.7s infinite;
+    }
+
+    .email-name {
+      font-size: clamp(28px, 3.2vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      white-space: nowrap;
+    }
+
+    .email-domain {
+      margin-top: 6px;
+      font-size: clamp(20px, 2.2vw, 30px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: rgba(237, 245, 241, 0.82);
+      white-space: nowrap;
+    }
+
+    @keyframes winnerBounce {
+      0% { opacity: 0; transform: scale(0.78) translateY(14px); filter: blur(4px); }
+      58% { opacity: 1; transform: scale(1.08) translateY(-3px); filter: blur(0); }
+      100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+    }
+
+    @keyframes winnerGlow {
+      0%, 100% { text-shadow: 0 0 0 rgba(111, 198, 171, 0), 0 0 0 rgba(111, 198, 171, 0); }
+      50% { text-shadow: 0 0 16px rgba(111, 198, 171, 0.20), 0 0 30px rgba(111, 198, 171, 0.08); }
+    }
+
+    .winner-prize {
+      font-size: 16px;
+      color: var(--success);
+      letter-spacing: 0.08em;
+    }
+
+    .count-pill {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      z-index: 6;
+      min-width: 260px;
+      padding: 16px 22px;
+      text-align: center;
+      border-radius: 999px;
+      transform: translateX(-50%);
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(16, 24, 22, 0.72);
+      backdrop-filter: blur(18px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 40px rgba(0,0,0,0.30);
+    }
+
+    .count-value {
+      font-size: clamp(24px, 2.8vw, 34px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+
+    .count-value span {
+      display: inline-block;
+      min-width: 2ch;
+    }
+
+    .flash { animation: flash 0.5s ease; }
+    .core-pop { animation: corePop 0.65s ease; }
+
+    @keyframes flash {
+      0% { transform: translateX(-50%) scale(1); }
+      30% { transform: translateX(-50%) scale(1.06); }
+      100% { transform: translateX(-50%) scale(1); }
+    }
+
+    @keyframes corePop {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.035); }
+      100% { transform: scale(1); }
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(3, 5, 5, 0.70);
+      backdrop-filter: blur(12px);
+    }
+
+    .modal.is-open { display: flex; }
+
+    .modal-panel {
+      width: min(100%, 460px);
+      padding: 28px;
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: var(--panel-strong);
+      box-shadow: 0 30px 90px rgba(0,0,0,0.45);
+    }
+
+    .modal-title {
+      margin: 0 0 10px;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .modal-desc,
+    .modal-check {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .modal-desc { margin: 0 0 20px; }
+    .modal-field { margin-bottom: 14px; }
+    .modal-label { display: block; margin-bottom: 8px; font-size: 12px; }
+
+    .modal-input {
+      width: 100%;
+      height: 54px;
+      padding: 0 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+    }
+
+    .modal-input:focus {
+      border-color: rgba(111, 198, 171, 0.28);
+      box-shadow: 0 0 0 4px rgba(111, 198, 171, 0.08);
+    }
+
+    .modal-check {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin: 16px 0 18px;
+    }
+
+    .modal-check input { margin-top: 3px; }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .btn {
+      flex: 1;
+      height: 52px;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+    .btn-primary {
+      color: var(--text);
+      border: 1px solid rgba(111, 198, 171, 0.22);
+      background: linear-gradient(180deg, rgba(111, 198, 171, 0.20), rgba(111, 198, 171, 0.14));
+    }
+
+    .btn-secondary {
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .modal-message {
+      min-height: 24px;
+      margin-top: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .modal-message.success { color: var(--success); }
+    .modal-message.error { color: var(--danger); }
+    .modal-message.info { color: var(--warning); }
+
+    @media (max-width: 900px) {
+      .system { width: min(88vw, 760px); }
+      .center-core { min-width: 230px; min-height: 230px; }
+      .modal-panel { padding: 22px; }
+      .modal-title { font-size: 24px; }
+    }
+  </style>
+
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9382191250873184" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="noise"></div>
+  <div class="scanline"></div>
+
+  <div class="hud hud--top-left">STANCE</div>
+  <div class="hud hud--top-right">
+    <span class="live-dot"></span>
+    <span>LIVE</span>
+  </div>
+  <div class="hud hud--bottom-left" id="drawText">TODAY DRAW / 21:00</div>
+  <div class="hud hud--bottom-right" id="orbitInfo"></div>
+
+  <main class="stage">
+    <section class="system" id="system" aria-label="Live event system">
+      <div class="ring ring-1"></div>
+      <div class="ring ring-2"></div>
+      <div class="ring ring-3"></div>
+      <div class="ring ring-4"></div>
+
+      <div class="orbit-layer" id="orbitOuter"></div>
+      <div class="orbit-layer reverse" id="orbitInner"></div>
+
+      <button class="center-core" id="core" aria-label="이벤트 응모 열기" type="button">
+        <div class="scan-beam"></div>
+
+        <div class="core-inner">
+          <div class="core-screen is-active" id="screenEntry">
+            <div class="core-kicker">Today Prize</div>
+            <div class="core-prize" id="entryPrizeText">₩5,000</div>
+            <div class="core-title">오늘 당첨 가능 금액</div>
+            <div class="core-time">가운데 원을 클릭해 이메일 응모</div>
+          </div>
+
+          <div class="core-screen" id="screenDrawing">
+            <div class="core-kicker">System</div>
+            <div class="core-prize drawing-text">
+              DRAWING
+              <span class="drawing-dots"><span>.</span><span>.</span><span>.</span></span>
+            </div>
+            <div class="core-title">당첨자 선정 중</div>
+            <div class="core-time">응모가 마감되었습니다</div>
+          </div>
+
+          <div class="core-screen" id="screenWinner">
+            <div class="core-kicker">Winner</div>
+            <div class="winner-email" id="winnerEmail">-</div>
+            <div class="core-title">축하합니다</div>
+            <div class="winner-prize" id="winnerPrizeText">PRIZE ₩5,000</div>
+          </div>
+        </div>
+      </button>
+
+      <div class="count-pill" id="countPill">
+        <div class="count-label" id="countLabel">Current Entries</div>
+        <div class="count-value" id="countValue"><span id="entryCount">0</span>명</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="entryModal" aria-hidden="true">
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-kicker">Email Entry</div>
+      <h2 class="modal-title" id="modalTitle">이메일 응모</h2>
+      <p class="modal-desc">
+        당첨 시 상품 발송을 위해 이메일이 필요합니다.<br />
+        하루 1회 응모 가능하며, 당첨자는 매일 21:00 발표됩니다.
+      </p>
+
+      <div class="modal-field">
+        <label class="modal-label" for="emailInput">Email Address</label>
+        <input
+          class="modal-input"
+          id="emailInput"
+          type="email"
+          inputmode="email"
+          autocomplete="email"
+          placeholder="example@email.com"
+        />
+      </div>
+
+      <label class="modal-check">
+        <input type="checkbox" id="agreeCheck" />
+        <span>이벤트 응모 및 당첨 안내를 위한 이메일 수집에 동의합니다.</span>
+      </label>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="closeModalBtn" type="button">닫기</button>
+        <button class="btn btn-primary" id="submitEntryBtn" type="button">응모하기</button>
+      </div>
+
+      <div class="modal-message" id="modalMessage"></div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const API_BASE = "https://mrdindoin.ddns.net/r";
+      const POLL_INTERVAL = 2000;
+
+      const state = {
+        entryCount: 0,
+        previousCount: -1,
+        currentMode: "entry",
+        lastMode: null,
+        entryOpen: true,
+        currentPrize: 5000,
+        currentDrawTime: "21:00",
+        currentWinnerEmail: null,
+        winnerTypingTimer: null,
+      };
+
+      const el = {
+        orbitOuter: document.getElementById("orbitOuter"),
+        orbitInner: document.getElementById("orbitInner"),
+        orbitInfo: document.getElementById("orbitInfo"),
+        countPill: document.getElementById("countPill"),
+        countLabel: document.getElementById("countLabel"),
+        countValue: document.getElementById("countValue"),
+        core: document.getElementById("core"),
+        system: document.getElementById("system"),
+        drawText: document.getElementById("drawText"),
+        screenEntry: document.getElementById("screenEntry"),
+        screenDrawing: document.getElementById("screenDrawing"),
+        screenWinner: document.getElementById("screenWinner"),
+        entryPrizeText: document.getElementById("entryPrizeText"),
+        winnerEmail: document.getElementById("winnerEmail"),
+        winnerPrizeText: document.getElementById("winnerPrizeText"),
+        entryModal: document.getElementById("entryModal"),
+        emailInput: document.getElementById("emailInput"),
+        agreeCheck: document.getElementById("agreeCheck"),
+        submitEntryBtn: document.getElementById("submitEntryBtn"),
+        closeModalBtn: document.getElementById("closeModalBtn"),
+        modalMessage: document.getElementById("modalMessage"),
+      };
+
+      const formatWon = (value) => `₩${Number(value || 0).toLocaleString("ko-KR")}`;
+
+      const escapeHtml = (value) => String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+      function setScreen(target) {
+        [el.screenEntry, el.screenDrawing, el.screenWinner].forEach((screen) => {
+          screen.classList.toggle("is-active", screen === target);
+        });
+      }
+
+      function setModalMessage(text = "", type = "info") {
+        el.modalMessage.textContent = text;
+        el.modalMessage.className = `modal-message ${type}`;
+      }
+
+      function setCoreInteractive(enabled) {
+        el.core.classList.toggle("is-clickable", enabled);
+        el.core.disabled = !enabled;
+        el.core.setAttribute("aria-disabled", String(!enabled));
+      }
+
+      function getOrbitConfig(count, mode = state.currentMode) {
+        const outerDots = Math.min(24, Math.max(4, Math.floor(count / 3) + 4));
+        const innerDots = Math.min(18, Math.max(2, Math.floor(count / 6) + 2));
+
+        let ring1Speed = Math.max(10, 26 - Math.floor(count / 8));
+        let ring2Speed = Math.max(8, 18 - Math.floor(count / 10));
+        let orbitSpeed = Math.max(9, 22 - Math.floor(count / 9));
+
+        if (mode === "drawing") {
+          ring1Speed = 5.5;
+          ring2Speed = 4.2;
+          orbitSpeed = 4.8;
+        }
+
+        if (mode === "winner") {
+          ring1Speed = Math.max(8, ring1Speed - 3);
+          ring2Speed = Math.max(7, ring2Speed - 2);
+          orbitSpeed = Math.max(7, orbitSpeed - 2);
+        }
+
+        return { outerDots, innerDots, ring1Speed, ring2Speed, orbitSpeed };
+      }
+
+      function createDots(container, count, radiusPercent, small = false) {
+        container.innerHTML = "";
+        const size = container.clientWidth || container.parentElement.clientWidth;
+        const center = size / 2;
+        const radius = (size * radiusPercent) / 100;
+
+        for (let i = 0; i < count; i += 1) {
+          const angle = (Math.PI * 2 * i) / count;
+          const x = center + radius * Math.cos(angle);
+          const y = center + radius * Math.sin(angle);
+          const dot = document.createElement("span");
+
+          dot.className = small ? "orbit-dot small" : "orbit-dot";
+          dot.style.left = `${x}px`;
+          dot.style.top = `${y}px`;
+
+          let scale = 0.88 + ((i % 5) * 0.06);
+          if (state.currentMode === "drawing") scale += 0.16;
+          if (state.currentMode === "winner" && i % 4 === 0) scale += 0.10;
+
+          dot.style.transform = `translate(-50%, -50%) scale(${scale})`;
+          container.appendChild(dot);
+        }
+      }
+
+      function renderOrbit(count) {
+        const { outerDots, innerDots, ring1Speed, ring2Speed, orbitSpeed } = getOrbitConfig(count);
+
+        el.system.style.setProperty("--ring1-speed", `${ring1Speed}s`);
+        el.system.style.setProperty("--ring2-speed", `${ring2Speed}s`);
+        el.system.style.setProperty("--orbit-speed", `${orbitSpeed}s`);
+
+        createDots(el.orbitOuter, outerDots, 47, false);
+        createDots(el.orbitInner, innerDots, 35, true);
+        el.orbitInfo.textContent = `${outerDots + innerDots} NODES`;
+      }
+
+      function animateCounters() {
+        el.countPill.classList.remove("flash");
+        el.core.classList.remove("core-pop");
+        void el.countPill.offsetWidth;
+        void el.core.offsetWidth;
+        el.countPill.classList.add("flash");
+        el.core.classList.add("core-pop");
+      }
+
+      function updateCount(newCount, force = false) {
+        if (!force && newCount === state.previousCount) return;
+
+        state.entryCount = Number(newCount) || 0;
+        state.previousCount = state.entryCount;
+
+        if (state.currentMode === "entry") {
+          el.countValue.innerHTML = `<span id="entryCount">${state.entryCount}</span>명`;
+        }
+
+        renderOrbit(state.entryCount);
+        animateCounters();
+      }
+
+      function stopWinnerTyping() {
+        if (state.winnerTypingTimer) {
+          clearInterval(state.winnerTypingTimer);
+          state.winnerTypingTimer = null;
+        }
+      }
+
+      function splitMaskedEmail(maskedEmail) {
+        const safe = String(maskedEmail || "-").trim();
+        if (!safe.includes("@")) return { name: safe, domain: "" };
+        const [name, domain] = safe.split("@", 2);
+        return { name: name || "-", domain: domain ? `@${domain}` : "" };
+      }
+
+      function renderWinnerEmail(maskedEmail) {
+        stopWinnerTyping();
+        const { name, domain } = splitMaskedEmail(maskedEmail);
+
+        el.winnerEmail.classList.remove("show-winner");
+        void el.winnerEmail.offsetWidth;
+        el.winnerEmail.innerHTML = `
+          <div class="email-name">${escapeHtml(name)}</div>
+          <div class="email-domain">${escapeHtml(domain)}</div>
+        `;
+        el.winnerEmail.classList.add("show-winner");
+      }
+
+      function renderEntryMode(data) {
+        state.currentMode = "entry";
+        state.entryOpen = true;
+        state.currentWinnerEmail = null;
+
+        el.system.classList.remove("mode-drawing");
+        el.core.classList.remove("mode-drawing", "mode-winner");
+        setCoreInteractive(true);
+
+        el.entryPrizeText.textContent = formatWon(data.today_prize);
+        el.countLabel.textContent = "Current Entries";
+        el.countValue.innerHTML = `<span id="entryCount">${Number(data.entry_count || 0)}</span>명`;
+        el.drawText.textContent = `TODAY DRAW / ${data.draw_time || state.currentDrawTime}`;
+
+        stopWinnerTyping();
+        setScreen(el.screenEntry);
+      }
+
+      function renderDrawingMode(data) {
+        state.currentMode = "drawing";
+        state.entryOpen = false;
+        state.currentWinnerEmail = null;
+
+        el.system.classList.add("mode-drawing");
+        el.core.classList.remove("mode-winner");
+        el.core.classList.add("mode-drawing");
+        setCoreInteractive(false);
+
+        el.countLabel.textContent = "Status";
+        el.countValue.textContent = "DRAWING...";
+        el.drawText.textContent = `ENTRY CLOSED / ${data.draw_time || state.currentDrawTime}`;
+
+        stopWinnerTyping();
+        setScreen(el.screenDrawing);
+      }
+
+      function renderWinnerMode(data) {
+        state.currentMode = "winner";
+        state.entryOpen = false;
+        state.currentWinnerEmail = data.winner_email_masked || null;
+
+        el.system.classList.remove("mode-drawing");
+        el.core.classList.remove("mode-drawing");
+        el.core.classList.add("mode-winner");
+        setCoreInteractive(false);
+
+        el.winnerPrizeText.textContent = `PRIZE ${formatWon(data.today_prize)}`;
+        el.countLabel.textContent = "Status";
+        el.countValue.textContent = "DRAW COMPLETE";
+        el.drawText.textContent = data.winner_display_until
+          ? `WINNER DISPLAY / UNTIL ${String(data.winner_display_until).slice(11, 16)}`
+          : "WINNER DISPLAY";
+
+        setScreen(el.screenWinner);
+        renderWinnerEmail(data.winner_email_masked || "-");
+      }
+
+      function renderClosedMode(data) {
+        state.currentMode = "closed";
+        state.entryOpen = false;
+        state.currentWinnerEmail = null;
+
+        el.system.classList.remove("mode-drawing");
+        el.core.classList.remove("mode-drawing", "mode-winner");
+        setCoreInteractive(false);
+
+        el.entryPrizeText.textContent = formatWon(data.today_prize);
+        el.countLabel.textContent = "Status";
+        el.countValue.textContent = "CLOSED";
+        el.drawText.textContent = `TODAY DRAW / ${data.draw_time || state.currentDrawTime}`;
+
+        stopWinnerTyping();
+        setScreen(el.screenEntry);
+      }
+
+      function animateModeChange(mode) {
+        el.core.classList.remove("core-pop");
+        el.countPill.classList.remove("flash");
+        void el.core.offsetWidth;
+        void el.countPill.offsetWidth;
+        el.core.classList.add("core-pop");
+        el.countPill.classList.add("flash");
+
+        if (mode === "drawing" || mode === "winner") {
+          renderOrbit(state.entryCount);
+        }
+      }
+
+      function applyStats(data) {
+        state.currentPrize = data.today_prize ?? state.currentPrize;
+        state.currentDrawTime = data.draw_time ?? state.currentDrawTime;
+
+        const nextCount = Number(data.entry_count || 0);
+        const nextMode = data.mode || "entry";
+        const modeChanged = state.lastMode !== null && nextMode !== state.lastMode;
+
+        switch (nextMode) {
+          case "entry":
+            renderEntryMode(data);
+            break;
+          case "drawing":
+            renderDrawingMode(data);
+            break;
+          case "winner":
+            renderWinnerMode(data);
+            break;
+          default:
+            renderClosedMode(data);
+        }
+
+        updateCount(nextCount, true);
+        if (modeChanged) animateModeChange(nextMode);
+        state.lastMode = nextMode;
+      }
+
+      function openModal() {
+        if (!state.entryOpen || state.currentMode !== "entry") return;
+        el.entryModal.classList.add("is-open");
+        el.entryModal.setAttribute("aria-hidden", "false");
+        setModalMessage("", "info");
+        el.emailInput.focus();
+      }
+
+      function closeModal() {
+        el.entryModal.classList.remove("is-open");
+        el.entryModal.setAttribute("aria-hidden", "true");
+        setModalMessage("", "info");
+      }
+
+      function isValidEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim().toLowerCase());
+      }
+
+      async function fetchStats() {
+        try {
+          const response = await fetch(`${API_BASE}/api/stats`, { cache: "no-store" });
+          if (!response.ok) return;
+          const data = await response.json();
+          applyStats(data);
+        } catch (error) {
+          console.error("Failed to fetch stats", error);
+        }
+      }
+
+      async function submitEntry() {
+        const email = el.emailInput.value.trim().toLowerCase();
+        const agreed = el.agreeCheck.checked;
+
+        if (!state.entryOpen || state.currentMode !== "entry") {
+          setModalMessage("현재는 응모 가능 시간이 아닙니다.", "error");
+          return;
+        }
+
+        if (!email) {
+          setModalMessage("이메일을 입력해주세요.", "error");
+          return;
+        }
+
+        if (!isValidEmail(email)) {
+          setModalMessage("올바른 이메일 형식이 아닙니다.", "error");
+          return;
+        }
+
+        if (!agreed) {
+          setModalMessage("이벤트 안내를 위한 동의가 필요합니다.", "error");
+          return;
+        }
+
+        el.submitEntryBtn.disabled = true;
+        setModalMessage("응모를 등록하는 중입니다...", "info");
+
+        try {
+          const response = await fetch(`${API_BASE}/api/entry`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+          });
+
+          const data = await response.json().catch(() => ({}));
+
+          if (response.ok && data.ok) {
+            setModalMessage(data.message || "응모가 완료되었습니다.", "success");
+
+            if (typeof data.entry_count === "number") {
+              updateCount(data.entry_count, true);
+            }
+
+            window.setTimeout(() => {
+              closeModal();
+              el.emailInput.value = "";
+              el.agreeCheck.checked = false;
+            }, 900);
+
+            fetchStats();
+            return;
+          }
+
+          setModalMessage(
+            data.message || "응모 처리 중 문제가 발생했습니다.",
+            response.status === 409 ? "info" : "error"
+          );
+        } catch (error) {
+          setModalMessage("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "error");
+        } finally {
+          el.submitEntryBtn.disabled = false;
+        }
+      }
+
+      function bindEvents() {
+        el.core.addEventListener("click", openModal);
+        el.closeModalBtn.addEventListener("click", closeModal);
+        el.submitEntryBtn.addEventListener("click", submitEntry);
+
+        el.entryModal.addEventListener("click", (event) => {
+          if (event.target === el.entryModal) closeModal();
+        });
+
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && el.entryModal.classList.contains("is-open")) {
+            closeModal();
+          }
+        });
+
+        el.emailInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") submitEntry();
+        });
+      }
+
+      function init() {
+        renderOrbit(state.entryCount);
+        bindEvents();
+        fetchStats();
+        window.setInterval(fetchStats, POLL_INTERVAL);
+      }
+
+      init();
+    })();
+  </script>
+
+  <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"b5b9029a4c114cf28f17743c97b219f5","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
